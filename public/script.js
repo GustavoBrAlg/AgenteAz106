@@ -12,9 +12,120 @@ document.addEventListener('DOMContentLoaded', () => {
     const messagesArea = document.getElementById('messages-area');
     const suggestionChips = document.querySelectorAll('.suggestion-chip');
     const chatContainer = document.getElementById('chat-container');
+    const setupIndicator = document.getElementById('setup-indicator');
+
+    // --- Settings Modal Elements ---
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsModal = document.getElementById('settings-modal');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+    const modalSaveBtn = document.getElementById('modal-save-btn');
+    const tempInput = document.getElementById('azure-temp');
+    const tempVal = document.getElementById('temp-val');
+    const toggleKeyVisibility = document.getElementById('toggle-key-visibility');
+    
+    // --- Inputs for connection settings ---
+    const endpointInput = document.getElementById('azure-endpoint');
+    const keyInput = document.getElementById('azure-key');
+    const deploymentInput = document.getElementById('azure-deployment');
+    const instructionsInput = document.getElementById('azure-instructions');
 
     // --- State ---
     let isTyping = false;
+    let config = {
+        endpoint: '',
+        key: '',
+        deployment: '',
+        temperature: 0.7,
+        instructions: ''
+    };
+
+    // --- Load saved configurations ---
+    function loadConfig() {
+        const saved = localStorage.getItem('agente_az106_config');
+        if (saved) {
+            config = JSON.parse(saved);
+            endpointInput.value = config.endpoint || '';
+            keyInput.value = config.key || '';
+            deploymentInput.value = config.deployment || '';
+            tempInput.value = config.temperature !== undefined ? config.temperature : 0.7;
+            tempVal.textContent = tempInput.value;
+            instructionsInput.value = config.instructions || '';
+            updateSetupIndicator();
+        }
+    }
+
+    // --- Update setup visual indicator ---
+    function updateSetupIndicator() {
+        if (config.endpoint && config.key && config.deployment) {
+            setupIndicator.className = 'setup-badge connected';
+            setupIndicator.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <span>Agente Azure Configurado (${config.deployment})</span>
+            `;
+        } else {
+            setupIndicator.className = 'setup-badge';
+            setupIndicator.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <span>Modo Visual (Sem conexão ativa com o Azure)</span>
+            `;
+        }
+    }
+
+    // --- Save configuration ---
+    function saveConfig() {
+        config = {
+            endpoint: endpointInput.value.trim(),
+            key: keyInput.value.trim(),
+            deployment: deploymentInput.value.trim(),
+            temperature: parseFloat(tempInput.value),
+            instructions: instructionsInput.value.trim()
+        };
+        localStorage.setItem('agente_az106_config', JSON.stringify(config));
+        updateSetupIndicator();
+        closeModal();
+    }
+
+    // --- Modal Functions ---
+    function openModal() {
+        settingsModal.classList.add('active');
+        settingsModal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeModal() {
+        settingsModal.classList.remove('active');
+        settingsModal.setAttribute('aria-hidden', 'true');
+    }
+
+    // --- Event Listeners for Modal ---
+    settingsBtn.addEventListener('click', openModal);
+    modalCloseBtn.addEventListener('click', closeModal);
+    modalCancelBtn.addEventListener('click', closeModal);
+    modalSaveBtn.addEventListener('click', saveConfig);
+
+    // Close on click outside modal
+    settingsModal.addEventListener('click', (e) => {
+        if (e.target === settingsModal) {
+            closeModal();
+        }
+    });
+
+    // Handle range display
+    tempInput.addEventListener('input', () => {
+        tempVal.textContent = tempInput.value;
+    });
+
+    // Toggle Key visibility
+    toggleKeyVisibility.addEventListener('click', () => {
+        const type = keyInput.type === 'password' ? 'text' : 'password';
+        keyInput.type = type;
+        const icon = toggleKeyVisibility.querySelector('svg');
+        if (type === 'text') {
+            icon.innerHTML = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+        } else {
+            icon.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+        }
+    });
 
     // --- Navigation ---
     navButtons.forEach(btn => {
@@ -82,12 +193,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show typing indicator
         showTyping();
 
-        // Simulate bot response
+        // Simulate agent / bot response
         setTimeout(() => {
             hideTyping();
             const response = generateResponse(text);
             addMessage(response, 'bot');
-        }, 1200 + Math.random() * 1000);
+        }, 1000 + Math.random() * 800);
     }
 
     // --- Add message to chat ---
@@ -153,34 +264,42 @@ document.addEventListener('DOMContentLoaded', () => {
         return div.innerHTML;
     }
 
-    // --- Generate Response (Demo) ---
+    // --- Generate Response (Visual Mode Demo) ---
     function generateResponse(input) {
         const lower = input.toLowerCase();
 
+        // If user already saved config, acknowledge it visually!
+        const isAzureConfigured = config.endpoint && config.key && config.deployment;
+
+        if (isAzureConfigured) {
+            return `🔌 [Simulação de Conexão com Azure]
+            
+            Seu agente Azure com ID **"${config.deployment}"** recebeu a mensagem:
+            "${input}"
+            
+            As configurações de envio utilizadas seriam:
+            • Endpoint: \`${config.endpoint}\`
+            • Temperatura: \`${config.temperature}\`
+            • Chave API: *(Enviada de forma segura com máscara)*
+            
+            Para ativar a resposta real do agente, você poderá conectar uma API de backend no seu Vercel quando seu agente estiver pronto no Azure!`;
+        }
+
         const responses = {
-            'o que você pode fazer': 
-                'Sou o AgenteAz106, um assistente virtual powered by Azure AI! Posso ajudar com:\n\n' +
-                '• Responder perguntas sobre diversos assuntos\n' +
-                '• Auxiliar em projetos de desenvolvimento\n' +
-                '• Explicar conceitos técnicos\n' +
-                '• Fornecer informações e sugestões\n\n' +
-                'Como posso ajudar você hoje?',
+            'como posso configurar meu agente': 
+                'Para configurar seu agente:\n\n' +
+                '1. Clique no ícone de engrenagem (⚙️) no canto superior direito.\n' +
+                '2. Insira o Endpoint e a Chave de API que você gerou no Azure AI.\n' +
+                '3. Especifique o ID do deployment do seu modelo.\n' +
+                '4. Salve! A interface passará a exibir o modo configurado.',
 
-            'me ajude com um projeto':
-                'Claro! Ficarei feliz em ajudar com seu projeto. Para começar, me conte:\n\n' +
-                '• Qual é o objetivo do projeto?\n' +
-                '• Quais tecnologias está utilizando?\n' +
-                '• Em qual etapa você está?\n\n' +
-                'Com essas informações, posso fornecer orientações mais específicas!',
+            'o que é temperatura no azure ai':
+                'A **Temperatura** controla a criatividade e aleatoriedade das respostas:\n\n' +
+                '• **Valores próximos de 0 (Ex: 0.1, 0.2)**: Tornam o agente mais determinista, focado e conciso. Ideal para respostas factuais e exatas.\n' +
+                '• **Valores próximos de 1 (Ex: 0.8, 1.0)**: Tornam o agente mais criativo, expressivo e variado. Ideal para brainstorming e escrita criativa.',
 
-            'explique um conceito técnico':
-                'Com prazer! Posso explicar conceitos de diversas áreas:\n\n' +
-                '• Programação (Python, JavaScript, C#, etc.)\n' +
-                '• Cloud Computing (Azure, AWS, GCP)\n' +
-                '• Inteligência Artificial e Machine Learning\n' +
-                '• DevOps e infraestrutura\n' +
-                '• Banco de dados e arquitetura de software\n\n' +
-                'Qual conceito você gostaria de entender melhor?',
+            'testar animação do chat':
+                'Perfeito! O chat está funcionando com animações fluidas baseadas em curvas Bezier, efeito de typing com atraso randômico, scroll automático suave e design adaptável para dispositivos móveis.',
         };
 
         // Check for matching suggestion
@@ -190,35 +309,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Default contextual responses
-        if (lower.includes('olá') || lower.includes('oi') || lower.includes('hey') || lower.includes('bom dia') || lower.includes('boa tarde') || lower.includes('boa noite')) {
-            return 'Olá! 👋 Que bom ter você aqui! Sou o AgenteAz106, seu assistente virtual. Como posso ajudar?';
+        if (lower.includes('olá') || lower.includes('oi') || lower.includes('bom dia') || lower.includes('boa tarde')) {
+            return 'Olá! 👋 Seja muito bem-vindo ao visualizador do AgenteAz106. Como posso ajudar com os testes visuais hoje?';
         }
 
-        if (lower.includes('obrigad')) {
-            return 'De nada! 😊 Fico feliz em poder ajudar. Se tiver mais alguma dúvida, é só perguntar!';
-        }
-
-        if (lower.includes('azure')) {
-            return 'O Azure é a plataforma de cloud computing da Microsoft, oferecendo serviços como:\n\n' +
-                '• Azure AI Services para inteligência artificial\n' +
-                '• Azure App Service para hospedagem de aplicações\n' +
-                '• Azure Functions para computação serverless\n' +
-                '• Azure Cosmos DB para bancos de dados globais\n\n' +
-                'Este próprio agente é powered by Azure AI! Quer saber mais sobre algum serviço específico?';
-        }
-
-        // Generic response
-        const genericResponses = [
-            `Entendi sua pergunta sobre "${input.substring(0, 50)}${input.length > 50 ? '...' : ''}". Este é um demo do AgenteAz106. Na versão completa, estarei conectado ao Azure AI para fornecer respostas mais detalhadas e precisas!`,
-            `Boa pergunta! No momento estou em modo demonstração. Quando conectado ao Azure AI, poderei fornecer uma resposta completa sobre esse assunto. Quer saber mais sobre como configurar a integração?`,
-            `Obrigado pela sua mensagem! Este é o modo de demonstração do AgenteAz106. A versão com Azure AI integrado terá capacidades avançadas de processamento de linguagem natural para responder perguntas como essa.`,
-        ];
-
-        return genericResponses[Math.floor(Math.random() * genericResponses.length)];
+        return `Este é o visual do seu Chatbot. 
+        
+        Você enviou: "${input}"
+        
+        Assim que você criar o seu Agente do Azure AI e definirmos a API no Vercel, o prompt será enviado diretamente para ele, processado com sua temperatura personalizada (atualmente configurada como ${config.temperature || 0.7}) e as instruções declaradas.`;
     }
 
-    // --- Feature card animations (intersection observer) ---
+    // --- Init ---
+    loadConfig();
+
+    // --- Feature card animations ---
     const featureCards = document.querySelectorAll('.feature-card');
     if ('IntersectionObserver' in window) {
         const observer = new IntersectionObserver((entries) => {
