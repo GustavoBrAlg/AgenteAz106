@@ -1,0 +1,13 @@
+{
+  "name": "agente-az106",
+  "version": "1.0.0",
+  "description": "Conectar site com o agente do Azure",
+  "scripts": {
+    "dev": "npx serve public",
+    "build": "echo 'Static site - no build needed'",
+    "start": "npx serve public"
+  },
+  "keywords": ["azure", "agent", "chatbot"],
+  "author": "GustavoBrAlg",
+  "license": "MIT"
+}
