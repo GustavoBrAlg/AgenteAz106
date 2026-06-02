@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- State ---
     let isTyping = false;
+    let currentThreadId = null; // Azure thread for conversation continuity
     let config = {
         endpoint: '',
         key: '',
@@ -57,19 +58,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Update setup visual indicator ---
     function updateSetupIndicator() {
-        if (config.endpoint && config.key && config.deployment) {
-            setupIndicator.className = 'setup-badge connected';
-            setupIndicator.innerHTML = `
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                <span>Agente Azure Configurado (${config.deployment})</span>
-            `;
-        } else {
-            setupIndicator.className = 'setup-badge';
-            setupIndicator.innerHTML = `
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                <span>Modo Visual (Sem conexão ativa com o Azure)</span>
-            `;
-        }
+        setupIndicator.className = 'setup-badge connected';
+        setupIndicator.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span>Conectado ao Agente Azure (Agnovochat)</span>
+        `;
     }
 
     // --- Save configuration ---
@@ -173,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Send Message ---
-    function sendMessage(text) {
+    async function sendMessage(text) {
         if (isTyping) return;
 
         // Hide welcome, show messages
@@ -193,12 +186,35 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show typing indicator
         showTyping();
 
-        // Simulate agent / bot response
-        setTimeout(() => {
+        try {
+            // Call the serverless API
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: text,
+                    threadId: currentThreadId
+                })
+            });
+
+            const data = await response.json();
+
             hideTyping();
-            const response = generateResponse(text);
-            addMessage(response, 'bot');
-        }, 1000 + Math.random() * 800);
+
+            if (response.ok) {
+                // Store thread ID for conversation continuity
+                if (data.threadId) {
+                    currentThreadId = data.threadId;
+                }
+                addMessage(data.response, 'bot');
+            } else {
+                addMessage(`⚠️ Erro: ${data.error || 'Falha ao comunicar com o agente.'}`, 'bot');
+            }
+        } catch (error) {
+            hideTyping();
+            addMessage('⚠️ Erro de conexão. Verifique se o servidor está respondendo.', 'bot');
+            console.error('Chat error:', error);
+        }
     }
 
     // --- Add message to chat ---
@@ -264,61 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return div.innerHTML;
     }
 
-    // --- Generate Response (Visual Mode Demo) ---
-    function generateResponse(input) {
-        const lower = input.toLowerCase();
-
-        // If user already saved config, acknowledge it visually!
-        const isAzureConfigured = config.endpoint && config.key && config.deployment;
-
-        if (isAzureConfigured) {
-            return `🔌 [Simulação de Conexão com Azure]
-            
-            Seu agente Azure com ID **"${config.deployment}"** recebeu a mensagem:
-            "${input}"
-            
-            As configurações de envio utilizadas seriam:
-            • Endpoint: \`${config.endpoint}\`
-            • Temperatura: \`${config.temperature}\`
-            • Chave API: *(Enviada de forma segura com máscara)*
-            
-            Para ativar a resposta real do agente, você poderá conectar uma API de backend no seu Vercel quando seu agente estiver pronto no Azure!`;
-        }
-
-        const responses = {
-            'como posso configurar meu agente': 
-                'Para configurar seu agente:\n\n' +
-                '1. Clique no ícone de engrenagem (⚙️) no canto superior direito.\n' +
-                '2. Insira o Endpoint e a Chave de API que você gerou no Azure AI.\n' +
-                '3. Especifique o ID do deployment do seu modelo.\n' +
-                '4. Salve! A interface passará a exibir o modo configurado.',
-
-            'o que é temperatura no azure ai':
-                'A **Temperatura** controla a criatividade e aleatoriedade das respostas:\n\n' +
-                '• **Valores próximos de 0 (Ex: 0.1, 0.2)**: Tornam o agente mais determinista, focado e conciso. Ideal para respostas factuais e exatas.\n' +
-                '• **Valores próximos de 1 (Ex: 0.8, 1.0)**: Tornam o agente mais criativo, expressivo e variado. Ideal para brainstorming e escrita criativa.',
-
-            'testar animação do chat':
-                'Perfeito! O chat está funcionando com animações fluidas baseadas em curvas Bezier, efeito de typing com atraso randômico, scroll automático suave e design adaptável para dispositivos móveis.',
-        };
-
-        // Check for matching suggestion
-        for (const [key, value] of Object.entries(responses)) {
-            if (lower.includes(key.toLowerCase())) {
-                return value;
-            }
-        }
-
-        if (lower.includes('olá') || lower.includes('oi') || lower.includes('bom dia') || lower.includes('boa tarde')) {
-            return 'Olá! 👋 Seja muito bem-vindo ao visualizador do AgenteAz106. Como posso ajudar com os testes visuais hoje?';
-        }
-
-        return `Este é o visual do seu Chatbot. 
-        
-        Você enviou: "${input}"
-        
-        Assim que você criar o seu Agente do Azure AI e definirmos a API no Vercel, o prompt será enviado diretamente para ele, processado com sua temperatura personalizada (atualmente configurada como ${config.temperature || 0.7}) e as instruções declaradas.`;
-    }
+    // --- Response now handled by /api/chat (Azure Agent) ---
 
     // --- Init ---
     loadConfig();
