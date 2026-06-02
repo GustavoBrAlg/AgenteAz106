@@ -3,6 +3,8 @@
    Vercel Serverless Function
    ============================================ */
 
+import https from 'https';
+
 const AZURE_BASE = process.env.AZURE_ENDPOINT; // e.g. https://projgustavonovo-resource.services.ai.azure.com/openai
 const AZURE_API_KEY = process.env.AZURE_API_KEY;
 const ASSISTANT_ID = process.env.AZURE_ASSISTANT_ID; // e.g. asst_743ojDeMnBaPuSmq4LBdvtVK
@@ -13,9 +15,51 @@ const headers = {
     "Content-Type": "application/json"
 };
 
+function httpsRequest(url, options = {}) {
+    return new Promise((resolve, reject) => {
+        const parsedUrl = new URL(url);
+        const reqOptions = {
+            hostname: parsedUrl.hostname,
+            path: parsedUrl.pathname + parsedUrl.search,
+            method: options.method || "GET",
+            headers: options.headers || {}
+        };
+        
+        const req = https.request(reqOptions, (res) => {
+            let data = "";
+            res.on("data", (chunk) => {
+                data += chunk;
+            });
+            res.on("end", () => {
+                resolve({
+                    ok: res.statusCode >= 200 && res.statusCode < 300,
+                    status: res.statusCode,
+                    text: () => Promise.resolve(data),
+                    json: () => {
+                        try {
+                            return Promise.resolve(JSON.parse(data));
+                        } catch (e) {
+                            return Promise.reject(new Error(`Failed to parse JSON: ${data}`));
+                        }
+                    }
+                });
+            });
+        });
+        
+        req.on("error", (err) => {
+            reject(err);
+        });
+        
+        if (options.body) {
+            req.write(options.body);
+        }
+        req.end();
+    });
+}
+
 async function azureFetch(path, options = {}) {
     const url = `${AZURE_BASE}${path}?api-version=${API_VERSION}`;
-    const res = await fetch(url, {
+    const res = await httpsRequest(url, {
         ...options,
         headers: { ...headers, ...(options.headers || {}) }
     });
@@ -51,18 +95,6 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Echo test to httpbin.org to check headers
-        const echoRes = await fetch("https://httpbin.org/anything", {
-            method: "POST",
-            headers: {
-                ...headers,
-                "User-Agent": "Mozilla/5.0"
-            },
-            body: JSON.stringify({ test: "data" })
-        });
-        const echoData = await echoRes.json();
-        return res.status(200).json({ echo: echoData });
-
         // 1. Create a new thread or reuse existing
         let currentThreadId = threadId;
         if (!currentThreadId) {
@@ -145,14 +177,9 @@ export default async function handler(req, res) {
             details: error.message,
             debug: {
                 base: baseMasked,
-                baseLength: AZURE_BASE ? AZURE_BASE.length : 0,
-                baseChars: AZURE_BASE ? AZURE_BASE.split('').map(c => c.charCodeAt(0)) : [],
                 key: keyMasked,
-                keyLength: AZURE_API_KEY ? AZURE_API_KEY.length : 0,
-                keyChars: AZURE_API_KEY ? AZURE_API_KEY.split('').map(c => c.charCodeAt(0)) : [],
                 assistantId: assistantMasked,
-                apiVersion: API_VERSION,
-                envKeys: Object.keys(process.env).filter(k => k.startsWith("AZURE_"))
+                apiVersion: API_VERSION
             }
         });
     }
