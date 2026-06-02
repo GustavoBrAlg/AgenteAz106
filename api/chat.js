@@ -133,7 +133,11 @@ export default async function handler(req, res) {
             details: error.message,
             debug: {
                 base: baseMasked,
+                baseLength: AZURE_BASE ? AZURE_BASE.length : 0,
+                baseChars: AZURE_BASE ? AZURE_BASE.split('').map(c => c.charCodeAt(0)) : [],
                 key: keyMasked,
+                keyLength: AZURE_API_KEY ? AZURE_API_KEY.length : 0,
+                keyChars: AZURE_API_KEY ? AZURE_API_KEY.split('').map(c => c.charCodeAt(0)) : [],
                 assistantId: assistantMasked,
                 apiVersion: API_VERSION,
                 envKeys: Object.keys(process.env).filter(k => k.startsWith("AZURE_"))
