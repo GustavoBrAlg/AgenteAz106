@@ -51,6 +51,18 @@ export default async function handler(req, res) {
     }
 
     try {
+        // Echo test to httpbin.org to check headers
+        const echoRes = await fetch("https://httpbin.org/anything", {
+            method: "POST",
+            headers: {
+                ...headers,
+                "User-Agent": "Mozilla/5.0"
+            },
+            body: JSON.stringify({ test: "data" })
+        });
+        const echoData = await echoRes.json();
+        return res.status(200).json({ echo: echoData });
+
         // 1. Create a new thread or reuse existing
         let currentThreadId = threadId;
         if (!currentThreadId) {
