@@ -41,18 +41,26 @@ document.addEventListener('DOMContentLoaded', () => {
         instructions: ''
     };
 
-    // --- Load saved configurations ---
-    function loadConfig() {
-        const saved = localStorage.getItem('agente_az106_config');
-        if (saved) {
-            config = JSON.parse(saved);
-            endpointInput.value = config.endpoint || '';
-            keyInput.value = config.key || '';
-            deploymentInput.value = config.deployment || '';
-            tempInput.value = config.temperature !== undefined ? config.temperature : 0.7;
-            tempVal.textContent = tempInput.value;
-            instructionsInput.value = config.instructions || '';
-            updateSetupIndicator();
+    // --- Load configurations automatically from backend ---
+    async function loadConfig() {
+        try {
+            const res = await fetch('/api/config');
+            if (res.ok) {
+                const data = await res.json();
+                config.endpoint = data.endpoint || '';
+                config.key = data.key || '';
+                config.deployment = data.deployment || '';
+                config.temperature = 0.7;
+                
+                endpointInput.value = config.endpoint;
+                keyInput.value = config.key;
+                deploymentInput.value = config.deployment;
+                tempVal.textContent = config.temperature;
+                
+                updateSetupIndicator();
+            }
+        } catch (e) {
+            console.error("Failed to load config", e);
         }
     }
 
