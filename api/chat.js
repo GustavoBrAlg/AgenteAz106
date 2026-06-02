@@ -125,9 +125,19 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error("Azure Agent Error:", error);
+        const baseMasked = AZURE_BASE ? (AZURE_BASE.substring(0, 15) + "..." + AZURE_BASE.substring(AZURE_BASE.length - 10)) : "undefined";
+        const keyMasked = AZURE_API_KEY ? (AZURE_API_KEY.substring(0, 6) + "..." + AZURE_API_KEY.substring(AZURE_API_KEY.length - 4)) : "undefined";
+        const assistantMasked = ASSISTANT_ID ? (ASSISTANT_ID.substring(0, 8) + "..." + ASSISTANT_ID.substring(ASSISTANT_ID.length - 4)) : "undefined";
         return res.status(500).json({
             error: "Erro ao comunicar com o agente Azure",
-            details: error.message
+            details: error.message,
+            debug: {
+                base: baseMasked,
+                key: keyMasked,
+                assistantId: assistantMasked,
+                apiVersion: API_VERSION,
+                envKeys: Object.keys(process.env).filter(k => k.startsWith("AZURE_"))
+            }
         });
     }
 }
