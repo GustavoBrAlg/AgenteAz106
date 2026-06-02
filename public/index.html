@@ -57,12 +57,6 @@
             </nav>
 
             <div class="header-actions">
-                <button class="icon-btn" id="settings-btn" title="Configurações do Agente Azure">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                    </svg>
-                </button>
                 <div class="header-status" id="connection-status">
                     <span class="status-dot"></span>
                     <span class="status-text">Online</span>
@@ -98,9 +92,9 @@
                     <p class="welcome-subtitle">Uma interface de chatbot premium pronta para ser conectada ao seu próprio Agente do Azure AI customizado.</p>
                     
                     <div class="setup-badge-container">
-                        <div class="setup-badge" id="setup-indicator">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                            <span>Modo Visual (Sem conexão ativa com o Azure)</span>
+                        <div class="setup-badge connected" id="setup-indicator">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            <span>Conectado ao Agente Azure</span>
                         </div>
                     </div>
 
@@ -204,64 +198,7 @@
         </section>
     </main>
 
-    <!-- Settings Drawer (Modal) -->
-    <div class="modal-overlay" id="settings-modal" aria-hidden="true">
-        <div class="modal">
-            <div class="modal-header">
-                <div class="modal-title">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-indigo)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                    </svg>
-                    Configurar Agente Azure
-                </div>
-                <button class="modal-close" id="modal-close-btn" aria-label="Fechar modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p class="modal-description">Insira os dados do seu Agente Azure AI abaixo para quando estiver pronto para conectá-los.</p>
-                
-                <div class="form-group">
-                    <label for="azure-endpoint">Endpoint do Azure AI</label>
-                    <input type="url" id="azure-endpoint" placeholder="https://seu-recurso.openai.azure.com/" autocomplete="off">
-                </div>
 
-                <div class="form-group">
-                    <label for="azure-key">Chave de API do Azure</label>
-                    <div class="input-password-wrapper">
-                        <input type="password" id="azure-key" placeholder="Digite sua chave do Azure..." autocomplete="off">
-                        <button class="toggle-password" id="toggle-key-visibility" type="button" aria-label="Mostrar chave">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="azure-deployment">Nome do Deployment / ID do Agente</label>
-                    <input type="text" id="azure-deployment" placeholder="Ex: meu-agente-az" autocomplete="off">
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="azure-temp">Temperatura (<span id="temp-val">0.7</span>)</label>
-                        <div class="range-container">
-                            <input type="range" id="azure-temp" min="0" max="1" step="0.1" value="0.7">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="azure-instructions">Instruções Customizadas (System Prompt)</label>
-                    <textarea id="azure-instructions" rows="3" placeholder="Ex: Você é um assistente especializado em responder dúvidas técnicas de forma concisa."></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="modal-cancel-btn">Cancelar</button>
-                <button class="btn btn-primary" id="modal-save-btn">Salvar Configurações</button>
-            </div>
-        </div>
-    </div>
 
     <script src="script.js"></script>
 </body>
