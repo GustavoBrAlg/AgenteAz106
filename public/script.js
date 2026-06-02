@@ -165,9 +165,41 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // --- Helper Functions for Azure ---
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function azureFetch(path, options = {}) {
+        const AZURE_BASE = config.endpoint.replace(/\/$/, "");
+        const API_VERSION = "2025-03-01-preview";
+        const url = `${AZURE_BASE}${path}?api-version=${API_VERSION}`;
+        
+        const res = await fetch(url, {
+            ...options,
+            headers: {
+                "api-key": config.key,
+                "Content-Type": "application/json",
+                ...(options.headers || {})
+            }
+        });
+        
+        if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`Azure API error ${res.status}: ${errorText}`);
+        }
+        return res.json();
+    }
+
     // --- Send Message ---
     async function sendMessage(text) {
         if (isTyping) return;
+
+        if (!config.endpoint || !config.key || !config.deployment) {
+            alert('Por favor, configure o Endpoint, Key e o ID do Agente (Deployment) nas configurações antes de enviar uma mensagem.');
+            openModal();
+            return;
+        }
 
         // Hide welcome, show messages
         if (welcomeScreen.style.display !== 'none') {
@@ -187,32 +219,79 @@ document.addEventListener('DOMContentLoaded', () => {
         showTyping();
 
         try {
-            // Call the serverless API
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+            // 1. Create a new thread or reuse existing
+            if (!currentThreadId) {
+                const thread = await azureFetch("/threads", {
+                    method: "POST",
+                    body: JSON.stringify({})
+                });
+                currentThreadId = thread.id;
+            }
+
+            // 2. Add user message to thread
+            await azureFetch(`/threads/${currentThreadId}/messages`, {
+                method: "POST",
                 body: JSON.stringify({
-                    message: text,
-                    threadId: currentThreadId
+                    role: "user",
+                    content: text
                 })
             });
 
-            const data = await response.json();
+            // 3. Create a run with the assistant
+            const run = await azureFetch(`/threads/${currentThreadId}/runs`, {
+                method: "POST",
+                body: JSON.stringify({
+                    assistant_id: config.deployment
+                })
+            });
+
+            // 4. Poll for run completion
+            let status = run.status;
+            let attempts = 0;
+            const maxAttempts = 30; // 30 * 2s = 60s max
+
+            await sleep(2000); // Initial wait
+
+            while (status === "queued" || status === "in_progress") {
+                if (attempts >= maxAttempts) {
+                    throw new Error("Agent response timed out");
+                }
+                const check = await azureFetch(`/threads/${currentThreadId}/runs/${run.id}`, {
+                    method: "GET"
+                });
+                status = check.status;
+                attempts++;
+
+                if (status === "queued" || status === "in_progress") {
+                    await sleep(2000);
+                }
+            }
+
+            if (status === "failed" || status === "cancelled" || status === "expired") {
+                throw new Error(`Agent run ended with status: ${status}`);
+            }
+
+            // 5. Get the latest assistant message
+            const messages = await azureFetch(`/threads/${currentThreadId}/messages?order=desc&limit=1`, {
+                method: "GET"
+            });
 
             hideTyping();
 
-            if (response.ok) {
-                // Store thread ID for conversation continuity
-                if (data.threadId) {
-                    currentThreadId = data.threadId;
+            let responseText = "Sem resposta do agente.";
+            const latestMessage = messages.data?.[0];
+            if (latestMessage && latestMessage.role === "assistant" && latestMessage.content?.length > 0) {
+                const textContent = latestMessage.content.find(c => c.type === "text");
+                if (textContent) {
+                    responseText = textContent.text?.value || textContent.text || responseText;
                 }
-                addMessage(data.response, 'bot');
-            } else {
-                addMessage(`⚠️ Erro: ${data.error || 'Falha ao comunicar com o agente.'}`, 'bot');
             }
+
+            addMessage(responseText, 'bot');
+
         } catch (error) {
             hideTyping();
-            addMessage('⚠️ Erro de conexão. Verifique se o servidor está respondendo.', 'bot');
+            addMessage(`⚠️ Erro de conexão com Azure: ${error.message}`, 'bot');
             console.error('Chat error:', error);
         }
     }
