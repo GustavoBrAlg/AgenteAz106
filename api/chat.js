@@ -3,10 +3,10 @@
    Vercel Serverless Function
    ============================================ */
 
-const AZURE_ENDPOINT = process.env.AZURE_ENDPOINT;
+const AZURE_BASE = process.env.AZURE_ENDPOINT; // e.g. https://projgustavonovo-resource.services.ai.azure.com/openai
 const AZURE_API_KEY = process.env.AZURE_API_KEY;
-const AGENT_ID = process.env.AZURE_AGENT_ID || "Agnovochat";
-const API_VERSION = "2025-05-15-preview";
+const ASSISTANT_ID = process.env.AZURE_ASSISTANT_ID; // e.g. asst_743ojDeMnBaPuSmq4LBdvtVK
+const API_VERSION = "2025-03-01-preview";
 
 const headers = {
     "api-key": AZURE_API_KEY,
@@ -14,7 +14,7 @@ const headers = {
 };
 
 async function azureFetch(path, options = {}) {
-    const url = `${AZURE_ENDPOINT}${path}?api-version=${API_VERSION}`;
+    const url = `${AZURE_BASE}${path}?api-version=${API_VERSION}`;
     const res = await fetch(url, {
         ...options,
         headers: { ...headers, ...(options.headers || {}) }
@@ -70,57 +70,57 @@ export default async function handler(req, res) {
             })
         });
 
-        // 3. Create a run with the agent
+        // 3. Create a run with the assistant
         const run = await azureFetch(`/threads/${currentThreadId}/runs`, {
             method: "POST",
             body: JSON.stringify({
-                agent_id: AGENT_ID
+                assistant_id: ASSISTANT_ID
             })
         });
 
-        // 4. Poll for run completion (max 60 seconds)
-        let runStatus = run;
+        // 4. Poll for run completion (max 55 seconds to stay within Vercel timeout)
+        let status = run.status;
         let attempts = 0;
-        const maxAttempts = 60;
+        const maxAttempts = 27; // 27 * 2s = 54s max
 
-        while (runStatus.status === "queued" || runStatus.status === "in_progress") {
+        await sleep(2000); // Initial wait
+
+        while (status === "queued" || status === "in_progress") {
             if (attempts >= maxAttempts) {
-                throw new Error("Agent response timed out after 60 seconds");
+                throw new Error("Agent response timed out");
             }
-            await sleep(1000);
-            runStatus = await azureFetch(`/threads/${currentThreadId}/runs/${run.id}`, {
+            const check = await azureFetch(`/threads/${currentThreadId}/runs/${run.id}`, {
                 method: "GET"
             });
+            status = check.status;
             attempts++;
+
+            if (status === "queued" || status === "in_progress") {
+                await sleep(2000);
+            }
         }
 
-        if (runStatus.status === "failed") {
-            throw new Error(`Agent run failed: ${JSON.stringify(runStatus.last_error || "Unknown error")}`);
+        if (status === "failed" || status === "cancelled" || status === "expired") {
+            throw new Error(`Agent run ended with status: ${status}`);
         }
 
         // 5. Get the latest assistant message
-        const messages = await azureFetch(`/threads/${currentThreadId}/messages`, {
+        const messages = await azureFetch(`/threads/${currentThreadId}/messages?order=desc&limit=1`, {
             method: "GET"
         });
 
-        // Find the most recent assistant message
-        const assistantMessages = messages.data.filter(m => m.role === "assistant");
-        const latestMessage = assistantMessages[0];
-
         let responseText = "Sem resposta do agente.";
-        if (latestMessage && latestMessage.content && latestMessage.content.length > 0) {
-            // Extract text from content array
+        const latestMessage = messages.data?.[0];
+        if (latestMessage && latestMessage.role === "assistant" && latestMessage.content?.length > 0) {
             const textContent = latestMessage.content.find(c => c.type === "text");
             if (textContent) {
-                responseText = textContent.text.value || textContent.text;
+                responseText = textContent.text?.value || textContent.text || responseText;
             }
         }
 
         return res.status(200).json({
             response: responseText,
-            threadId: currentThreadId,
-            agentId: AGENT_ID,
-            status: runStatus.status
+            threadId: currentThreadId
         });
 
     } catch (error) {
